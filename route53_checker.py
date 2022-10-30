@@ -1,6 +1,8 @@
 import sys
 import logging
 import validators
+import argparse
+import json
 
 from checks.s3 import s3Check
 from checks.api_gateway import APIGateway
@@ -10,7 +12,7 @@ from checks.loadbalancer import Loadbalancer
 from checks.domain import Domain
 from checks.ec2 import EC2
 from helpers.route53 import route53
-import helpers.printer as printer
+from helpers.printer import Printer
 
 LOGGING_LEVEL = logging.ERROR
 
@@ -25,19 +27,37 @@ root.addHandler(handler)
 all_checks = ["s3", "apigateway", "cloudfront", "elasticbeanstalk", "loadbalancer", "ec2", "domain"]
 
 if __name__ == "__main__":
-    arguments = sys.argv
-    if len(arguments) != 3:
-        printer.main_message()
-        sys.exit(0)
-    checks = arguments[2].split(",")
-    if len(checks) == 0:
-        printer.main_message()
+
+    all_issues = []
+    printer = Printer()
+    printer.main_message()
+
+    parser = argparse.ArgumentParser(
+        prog='route53checker')
+
+    parser.add_argument('-c', '--checks', help=printer.checks_message())
+    parser.add_argument('-d', '--domain', help=printer.domain_message(), action='store_true')
+    parser.add_argument('-s', '--suppress', help=printer.suppress_message(), action='store_true')
+    parser.add_argument('-o', '--output', help=printer.output_message())
+
+    args = parser.parse_args()
+
+    checks = []
+    if args.domain:
+        checks = ["domain"]
+    if args.suppress:
+        printer.suppress = True
+    if args.checks is None:
+        printer.display("route53checker: error: the following arguments are required: "
+                        "-c / --checks or -d / --domain")
         sys.exit(1)
-    if checks[0] == 'all':
-        checks = all_checks[:-1]
-    if not set(checks).issubset(set(all_checks)):
-        printer.main_message()
-        sys.exit(1)
+    elif args.checks == 'all':
+        checks = checks + all_checks[:-1]
+    else:
+        checks = checks + args.checks.split(",")
+        if not set(checks).issubset(set(all_checks)):
+            printer.display("Error, unknown check supplied")
+            sys.exit(1)
 
     printer.display("Starting ingestion for the following resources")
     printer.display(" ".join(checks))
@@ -98,48 +118,55 @@ if __name__ == "__main__":
                     if 's3' in checks:
                         if record.startswith("s3-website.") and record.endswith(f".amazonaws.com."):
                             check_bucket = s3.s3_check(buckets, all_zone_info['name'][:-1])
-                            printer.print_resource_result(all_zone_info['name'][:-1], check_bucket, record)
+                            all_issues.append(printer.print_resource_result(
+                                all_zone_info['name'][:-1], check_bucket, record))
                             continue
                     if 'apigateway' in checks:
                         if ".execute-api." in record and record.endswith(f".amazonaws.com."):
                             check_apigateway = apigateway.api_gateway_check(apigateways, record)
-                            printer.print_resource_result(all_zone_info['name'][:-1], check_apigateway, record)
+                            all_issues.append(printer.print_resource_result(
+                                all_zone_info['name'][:-1],check_apigateway, record))
                             continue
                     if 'cloudfront' in checks:
                         if record.endswith(f".cloudfront.net."):
                             check_cloudfront = cloudfront.cloudfront_check(cloudfronts, record)
-                            printer.print_resource_result(all_zone_info['name'][:-1], check_cloudfront, record)
+                            all_issues.append(
+                                printer.print_resource_result(all_zone_info['name'][:-1],
+                                                              check_cloudfront, record))
                             continue
                     if 'elasticbeanstalk' in checks:
                         if record.endswith(f".elasticbeanstalk.com."):
                             check_elasticbeanstalk = elasticbeanstalk.elastic_beanstalk_check(
                                 elasticbeanstalks, record)
-                            printer.print_resource_result(all_zone_info['name'][:-1],
-                                                          check_elasticbeanstalk, record)
+                            all_issues.append(printer.print_resource_result(
+                                all_zone_info['name'][:-1], check_elasticbeanstalk, record))
                             continue
                     if 'loadbalancer' in checks:
                         if record.endswith(f".elb.amazonaws.com."):
-                            check_loadbalancer = loadbalancer.loadbalancercheck(loadbalancers,
-                                                                                record.replace(
-                                                                                    "dualstack.",
-                                                                                    ""))
-                            printer.print_resource_result(all_zone_info['name'][:-1],
-                                                          check_loadbalancer, record)
+                            check_loadbalancer = loadbalancer.loadbalancercheck(
+                                loadbalancers, record.replace("dualstack.", ""))
+                            all_issues.append(printer.print_resource_result(
+                                all_zone_info['name'][:-1], check_loadbalancer, record))
                             continue
                         if record.endswith(f".amazonaws.com.") and ".elb." in record:
-                            check_loadbalancer = loadbalancer.loadbalancercheck(loadbalancers,
-                                                                                record.replace(
-                                                                                    "dualstack.", ""))
-                            printer.print_resource_result(all_zone_info['name'][:-1],
-                                                          check_loadbalancer, record)
+                            check_loadbalancer = loadbalancer.loadbalancercheck(
+                                loadbalancers, record.replace("dualstack.",""))
+                            all_issues.append(printer.print_resource_result(
+                                all_zone_info['name'][:-1], check_loadbalancer, record))
                             continue
                     if 'ec2' in checks:
                         if record.endswith(".compute.amazonaws.com."):
                             check_ec2 = ec2.ec2check(ec2s, record)
-                            printer.print_resource_result(all_zone_info['name'][:-1], check_ec2,
-                                                          record)
+                            all_issues.append(printer.print_resource_result(
+                                all_zone_info['name'][:-1], check_ec2, record))
                     if 'domain' in checks:
                         if validators.domain(record[:-1]):
                             check_domain = domain.domain_check(record[:-1])
-                            printer.print_resource_result(all_zone_info['name'][:-1], check_domain, record)
+                            all_issues.append(printer.print_resource_result(
+                                all_zone_info['name'][:-1], check_domain,record))
 
+    if args.output:
+        all_issues_json = json.dumps(all_issues)
+        f = open(f"{args.output}.json", "w")
+        f.write(all_issues_json)
+        f.close()

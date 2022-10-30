@@ -1,17 +1,19 @@
 
-# Route 53 Checker
+# Route53Checker
 
-Route53 Checker attempts to identify possible issues related to an AWS account's Route 53 entries, by reviewing A and CNAME records and comparing them to the resources within the account and public DNS records. 
+Route53Checker identifies possible issues related to an AWS account's Route 53 entries, by reviewing A and CNAME records and comparing them to the resources within the account and public DNS records.
 
-## Setup
-
-
+Route53Checker will iterate through all available regions for services where the API requires a region.
 
 ## Usage
 
 To perform all check, including dangling DNS records of non-AWS resources, the following command should be used:
 
     python3 route53_checker.py -c all -d
+
+Typical output would look like this:
+
+![image](resources/route53checker.png)
 
 The following switches are available.
 
