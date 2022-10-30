@@ -3,6 +3,7 @@ import socket
 
 
 class APIGateway:
+    """ Checks APIGateway resources in Route 53 records """
     def __init__(self, logging):
         self.apigateway_client = None
         self.logging = logging

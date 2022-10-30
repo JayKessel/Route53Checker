@@ -3,6 +3,7 @@ import socket
 
 
 class ElasticBeanstalk:
+    """ Checks Elastic Beanstalk resources in Route 53 records """
     def __init__(self, logging):
         self.logging = logging
         self.regions = boto3.session.Session().get_available_regions('elasticbeanstalk')

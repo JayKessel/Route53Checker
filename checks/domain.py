@@ -1,9 +1,8 @@
 import socket
 
 
-
-
 class Domain:
+    """ Checks for dangling domains in Route 53 records """
     def __init__(self, logging):
         self.logging = logging
 

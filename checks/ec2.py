@@ -50,6 +50,7 @@ def parse_ec2_data(ec2_data):
 
 
 class EC2:
+    """ Checks EC2 resources in Route 53 records """
     def __init__(self, logging):
         self.logging = logging
         self.regions = boto3.session.Session().get_available_regions('ec2')

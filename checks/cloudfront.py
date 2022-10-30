@@ -3,6 +3,7 @@ import socket
 
 
 class Cloudfront:
+    """ Checks Cloudfront resources in Route 53 records """
     def __init__(self, logging):
         self.logging = logging
         self.cloudfront_client = boto3.client('cloudfront')

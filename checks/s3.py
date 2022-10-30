@@ -5,6 +5,7 @@ from botocore.exceptions import ClientError
 
 
 class s3Check:
+    """ Checks S3 resources in Route 53 records """
     def __init__(self, logging):
         self.logging = logging
         self.session = boto3.session.Session()
