@@ -1,7 +1,11 @@
 
 # Route53Checker
 
-Route53Checker identifies possible issues related to an AWS account's Route 53 entries, by reviewing A and CNAME records and comparing them to the resources within the account and public DNS records.
+Route53Checker identifies possible issues related to an AWS account's Route 53 entries, by reviewing A and CNAME records and comparing them to the resources within the account and public DNS records.The following are some of the checks conducted.
+
+* Check for possible subdomain takeovers
+* Find dangling domains
+* Determine if records point to AWS resources outside of account
 
 Route53Checker will iterate through all available regions for services where the API requires a region.
 
